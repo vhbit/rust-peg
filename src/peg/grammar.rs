@@ -90,16 +90,16 @@ fn parse_grammar(input: &str, pos: uint) -> Result<(uint, Grammar) , uint> {
         }
     }
 }
-pub fn grammar(input: &str) -> Result<Grammar, ~str> {
+pub fn grammar(input: &str) -> Result<Grammar, StrBuf> {
     match parse_grammar(input, 0) {
         Ok((pos, value)) => {
             if pos == input.len() {
                 Ok(value)
             } else {
-                Err(~"Expected end of input at " + pos_to_line(input, pos).to_str())
+                Err(("Expected end of input at " + pos_to_line(input, pos).to_str()).to_strbuf())
             }
         }
-        Err(pos) => Err("Error at "+ pos_to_line(input, pos).to_str()),
+        Err(pos) => Err(("Error at "+ pos_to_line(input, pos).to_str()).to_strbuf()),
     }
 }
 #[allow(unused_variable)]
@@ -149,7 +149,7 @@ fn parse_rule(input: &str, pos: uint) -> Result<(uint, Rule) , uint> {
                                                 Ok((pos, _)) => {
                                                     let match_str = input.slice(start_pos, pos);;
                                                     Ok((pos, {
-      Rule{ name: name, expr: ~expression, ret_type: returns, exported: exported }
+      Rule{ name: name, expr: box expression, ret_type: returns, exported: exported }
     }))
                                                 }
                                             }
@@ -205,7 +205,7 @@ fn parse_exportflag(input: &str, pos: uint) -> Result<(uint, bool) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_returntype(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_returntype(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let choice_res = {
         let start_pos = pos;
         let seq_res = {
@@ -223,7 +223,7 @@ fn parse_returntype(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
                         Err(pos) => Err(pos),
                         Ok((pos, _)) => {
                             let match_str = input.slice(start_pos, pos);;
-                            Ok((pos, {match_str.trim().to_owned()}))
+                            Ok((pos, {match_str.trim().to_strbuf()}))
                         }
                     }
                 };
@@ -242,7 +242,7 @@ fn parse_returntype(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
         Err(..) => {
             let start_pos = pos;
             let match_str = input.slice(start_pos, pos);;
-            Ok((pos, { ~"()" }))
+            Ok((pos, { "()".to_strbuf() }))
         }
     }
 }
@@ -264,18 +264,26 @@ fn parse_rust_type(input: &str, pos: uint) -> Result<(uint, ()) , uint> {
         Err(..) => {
             let choice_res = {
                 let seq_res = {
-                    slice_eq(input, pos, "~")
+                    slice_eq(input, pos, "Box<")
                 };
                 match seq_res {
                     Err(pos) => Err(pos),
                     Ok((pos, _)) => {
                         let seq_res = {
-                            parse___(input, pos)
+                            parse_rust_type(input, pos)
                         };
                         match seq_res {
                             Err(pos) => Err(pos),
                             Ok((pos, _)) => {
-                                parse_rust_type(input, pos)
+                                let seq_res = {
+                                    slice_eq(input, pos, ">")
+                                };
+                                match seq_res {
+                                    Err(pos) => Err(pos),
+                                    Ok((pos, _)) => {
+                                        parse___(input, pos)
+                                    }
+                                }
                             }
                         }
                     }
@@ -569,7 +577,7 @@ fn parse_labeled(input: &str, pos: uint) -> Result<(uint, TaggedExpr) , uint> {
                             Ok((pos, expression)) => {
                                 let match_str = input.slice(start_pos, pos);;
                                 Ok((pos, {
-      TaggedExpr{ name: Some(label), expr: ~expression }
+      TaggedExpr{ name: Some(label), expr: box expression }
     }))
                             }
                         }
@@ -590,7 +598,7 @@ fn parse_labeled(input: &str, pos: uint) -> Result<(uint, TaggedExpr) , uint> {
                 Ok((pos, expr)) => {
                     let match_str = input.slice(start_pos, pos);;
                     Ok((pos, {
-      TaggedExpr{ name: None, expr: ~expr }
+      TaggedExpr{ name: None, expr: box expr }
   }))
                 }
             }
@@ -641,7 +649,7 @@ fn parse_prefixed(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
                             Ok((pos, expression)) => {
                                 let match_str = input.slice(start_pos, pos);;
                                 Ok((pos, {
-      PosAssertExpr(~expression)
+      PosAssertExpr(box expression)
     }))
                             }
                         }
@@ -667,7 +675,7 @@ fn parse_prefixed(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
                                     Ok((pos, expression)) => {
                                         let match_str = input.slice(start_pos, pos);;
                                         Ok((pos, {
-      NegAssertExpr(~expression)
+      NegAssertExpr(box expression)
     }))
                                     }
                                 }
@@ -703,7 +711,7 @@ fn parse_suffixed(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
                     Ok((pos, _)) => {
                         let match_str = input.slice(start_pos, pos);;
                         Ok((pos, {
-       OptionalExpr(~expression)
+       OptionalExpr(box expression)
     }))
                     }
                 }
@@ -729,7 +737,7 @@ fn parse_suffixed(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
                             Ok((pos, _)) => {
                                 let match_str = input.slice(start_pos, pos);;
                                 Ok((pos, {
-      ZeroOrMore(~expression)
+      ZeroOrMore(box expression)
     }))
                             }
                         }
@@ -755,7 +763,7 @@ fn parse_suffixed(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
                                     Ok((pos, _)) => {
                                         let match_str = input.slice(start_pos, pos);;
                                         Ok((pos, {
-      OneOrMore(~expression)
+      OneOrMore(box expression)
     }))
                                     }
                                 }
@@ -894,7 +902,7 @@ fn parse_primary(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_action(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_action(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let start_pos = pos;
     let seq_res = {
         parse_braced(input, pos)
@@ -916,7 +924,7 @@ fn parse_action(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_braced(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_braced(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let start_pos = pos;
     let seq_res = {
         slice_eq(input, pos, "{")
@@ -964,7 +972,7 @@ fn parse_braced(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
                     Err(pos) => Err(pos),
                     Ok((pos, _)) => {
                         let match_str = input.slice(start_pos, pos);;
-                        Ok((pos, {match_str.to_owned()}))
+                        Ok((pos, {match_str.to_strbuf()}))
                     }
                 }
             };
@@ -1194,7 +1202,7 @@ fn parse_returns(input: &str, pos: uint) -> Result<(uint, ()) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_identifier(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_identifier(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let start_pos = pos;
     let seq_res = {
         let start_pos = pos;
@@ -1250,7 +1258,7 @@ fn parse_identifier(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
                     Err(pos) => Err(pos),
                     Ok((pos, _)) => {
                         let match_str = input.slice(start_pos, pos);;
-                        Ok((pos, {match_str.to_owned()}))
+                        Ok((pos, {match_str.to_strbuf()}))
                     }
                 }
             }
@@ -1319,7 +1327,7 @@ fn parse_literal(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_string(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_string(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let start_pos = pos;
     let seq_res = {
         let choice_res = {
@@ -1349,7 +1357,7 @@ fn parse_string(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_doubleQuotedString(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_doubleQuotedString(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let start_pos = pos;
     let seq_res = {
         slice_eq(input, pos, "\"")
@@ -1387,7 +1395,7 @@ fn parse_doubleQuotedString(input: &str, pos: uint) -> Result<(uint, ~str) , uin
                         Err(pos) => Err(pos),
                         Ok((pos, _)) => {
                             let match_str = input.slice(start_pos, pos);;
-                            Ok((pos, { str::from_chars(s.as_slice()) }))
+                            Ok((pos, { str::from_chars(s.as_slice()).to_strbuf() }))
                         }
                     }
                 }
@@ -1484,7 +1492,7 @@ fn parse_simpleDoubleQuotedCharacter(input: &str, pos: uint) -> Result<(uint, ch
     }
 }
 #[allow(unused_variable)]
-fn parse_singleQuotedString(input: &str, pos: uint) -> Result<(uint, ~str) , uint> {
+fn parse_singleQuotedString(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     let start_pos = pos;
     let seq_res = {
         slice_eq(input, pos, "\'")
@@ -1522,7 +1530,7 @@ fn parse_singleQuotedString(input: &str, pos: uint) -> Result<(uint, ~str) , uin
                         Err(pos) => Err(pos),
                         Ok((pos, _)) => {
                             let match_str = input.slice(start_pos, pos);;
-                            Ok((pos, { str::from_chars(s.as_slice()) }))
+                            Ok((pos, { str::from_chars(s.as_slice()).to_strbuf() }))
                         }
                     }
                 }
