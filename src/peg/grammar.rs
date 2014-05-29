@@ -90,16 +90,16 @@ fn parse_grammar(input: &str, pos: uint) -> Result<(uint, Grammar) , uint> {
         }
     }
 }
-pub fn grammar(input: &str) -> Result<Grammar, StrBuf> {
+pub fn grammar(input: &str) -> Result<Grammar, String> {
     match parse_grammar(input, 0) {
         Ok((pos, value)) => {
             if pos == input.len() {
                 Ok(value)
             } else {
-                Err(("Expected end of input at " + pos_to_line(input, pos).to_str()).to_strbuf())
+                Err(format!("Expected end of input at {}", pos_to_line(input, pos)))
             }
         }
-        Err(pos) => Err(("Error at "+ pos_to_line(input, pos).to_str()).to_strbuf()),
+        Err(pos) => Err(format!("Error at {}", pos_to_line(input, pos))),
     }
 }
 #[allow(unused_variable)]
@@ -205,7 +205,7 @@ fn parse_exportflag(input: &str, pos: uint) -> Result<(uint, bool) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_returntype(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_returntype(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let choice_res = {
         let start_pos = pos;
         let seq_res = {
@@ -223,7 +223,7 @@ fn parse_returntype(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
                         Err(pos) => Err(pos),
                         Ok((pos, _)) => {
                             let match_str = input.slice(start_pos, pos);;
-                            Ok((pos, {match_str.trim().to_strbuf()}))
+                            Ok((pos, {match_str.trim().to_string()}))
                         }
                     }
                 };
@@ -242,7 +242,7 @@ fn parse_returntype(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
         Err(..) => {
             let start_pos = pos;
             let match_str = input.slice(start_pos, pos);;
-            Ok((pos, { "()".to_strbuf() }))
+            Ok((pos, { "()".to_string() }))
         }
     }
 }
@@ -902,7 +902,7 @@ fn parse_primary(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_action(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_action(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let start_pos = pos;
     let seq_res = {
         parse_braced(input, pos)
@@ -924,7 +924,7 @@ fn parse_action(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_braced(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_braced(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let start_pos = pos;
     let seq_res = {
         slice_eq(input, pos, "{")
@@ -972,7 +972,7 @@ fn parse_braced(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
                     Err(pos) => Err(pos),
                     Ok((pos, _)) => {
                         let match_str = input.slice(start_pos, pos);;
-                        Ok((pos, {match_str.to_strbuf()}))
+                        Ok((pos, {match_str.to_string()}))
                     }
                 }
             };
@@ -1202,7 +1202,7 @@ fn parse_returns(input: &str, pos: uint) -> Result<(uint, ()) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_identifier(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_identifier(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let start_pos = pos;
     let seq_res = {
         let start_pos = pos;
@@ -1258,7 +1258,7 @@ fn parse_identifier(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
                     Err(pos) => Err(pos),
                     Ok((pos, _)) => {
                         let match_str = input.slice(start_pos, pos);;
-                        Ok((pos, {match_str.to_strbuf()}))
+                        Ok((pos, {match_str.to_string()}))
                     }
                 }
             }
@@ -1327,7 +1327,7 @@ fn parse_literal(input: &str, pos: uint) -> Result<(uint, Expr) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_string(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_string(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let start_pos = pos;
     let seq_res = {
         let choice_res = {
@@ -1357,7 +1357,7 @@ fn parse_string(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
     }
 }
 #[allow(unused_variable)]
-fn parse_doubleQuotedString(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_doubleQuotedString(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let start_pos = pos;
     let seq_res = {
         slice_eq(input, pos, "\"")
@@ -1395,7 +1395,7 @@ fn parse_doubleQuotedString(input: &str, pos: uint) -> Result<(uint, StrBuf) , u
                         Err(pos) => Err(pos),
                         Ok((pos, _)) => {
                             let match_str = input.slice(start_pos, pos);;
-                            Ok((pos, { str::from_chars(s.as_slice()).to_strbuf() }))
+                            Ok((pos, { str::from_chars(s.as_slice()).to_string() }))
                         }
                     }
                 }
@@ -1492,7 +1492,7 @@ fn parse_simpleDoubleQuotedCharacter(input: &str, pos: uint) -> Result<(uint, ch
     }
 }
 #[allow(unused_variable)]
-fn parse_singleQuotedString(input: &str, pos: uint) -> Result<(uint, StrBuf) , uint> {
+fn parse_singleQuotedString(input: &str, pos: uint) -> Result<(uint, String) , uint> {
     let start_pos = pos;
     let seq_res = {
         slice_eq(input, pos, "\'")
@@ -1530,7 +1530,7 @@ fn parse_singleQuotedString(input: &str, pos: uint) -> Result<(uint, StrBuf) , u
                         Err(pos) => Err(pos),
                         Ok((pos, _)) => {
                             let match_str = input.slice(start_pos, pos);;
-                            Ok((pos, { str::from_chars(s.as_slice()).to_strbuf() }))
+                            Ok((pos, { str::from_chars(s.as_slice()).to_string() }))
                         }
                     }
                 }

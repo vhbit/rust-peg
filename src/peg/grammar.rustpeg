@@ -17,9 +17,9 @@ rule -> Rule
 
     exportflag -> bool = "#[export]" __ {true} / "" {false}
 
-returntype -> StrBuf
-  = returns tp:(rust_type {match_str.trim().to_strbuf()}) { tp }
-  / { "()".to_strbuf() }
+returntype -> String
+  = returns tp:(rust_type {match_str.trim().to_string()}) { tp }
+  / { "()".to_string() }
 
 rust_type
   = "()" __
@@ -104,11 +104,11 @@ primary -> Expr
 
 /* "Lexical" elements */
 
-action -> StrBuf
+action -> String
   = braced:braced __ { braced }
 
-braced -> StrBuf
-  = "{" b:(((braced "") / nonBraceCharacters)* {match_str.to_strbuf()}) "}" {b}
+braced -> String
+  = "{" b:(((braced "") / nonBraceCharacters)* {match_str.to_string()}) "}" {b}
 
 nonBraceCharacters
   = nonBraceCharacter+
@@ -149,8 +149,8 @@ returns   = "->" __
  * Contrary to ECMA 262, the "$" character is not valid because it serves other
  * purpose in the grammar.
  */
-identifier -> StrBuf
-  = chars:((letter / "_") (letter / digit / "_")* {match_str.to_strbuf()}) __ { chars }
+identifier -> String
+  = chars:((letter / "_") (letter / digit / "_")* {match_str.to_string()}) __ { chars }
 
 /*
  * Modeled after ECMA-262, 5th ed., 7.8.4. (syntax & semantics, rules only
@@ -161,11 +161,11 @@ literal -> Expr
       LiteralExpr(value)
     }
 
-string -> StrBuf
+string -> String
   = string:(doubleQuotedString / singleQuotedString) __ { string }
 
-doubleQuotedString -> StrBuf
-  = '"' s:doubleQuotedCharacter* '"' { str::from_chars(s.as_slice()).to_strbuf() }
+doubleQuotedString -> String
+  = '"' s:doubleQuotedCharacter* '"' { str::from_chars(s.as_slice()).to_string() }
 
 doubleQuotedCharacter -> char
   = simpleDoubleQuotedCharacter
@@ -178,8 +178,8 @@ doubleQuotedCharacter -> char
 simpleDoubleQuotedCharacter -> char
   = !('"' / "\\" / eolChar) . { match_str.char_at(0) }
 
-singleQuotedString -> StrBuf
-  = "'" s:singleQuotedCharacter* "'" { str::from_chars(s.as_slice()).to_strbuf() }
+singleQuotedString -> String
+  = "'" s:singleQuotedCharacter* "'" { str::from_chars(s.as_slice()).to_string() }
 
 singleQuotedCharacter -> char
   = simpleSingleQuotedCharacter

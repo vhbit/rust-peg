@@ -2,14 +2,14 @@ use codegen::RustWriter;
 use std::str;
 
 pub struct Grammar {
-	pub initializer: Option<StrBuf>,
+	pub initializer: Option<String>,
 	pub rules: Vec<Rule>,
 }
 
 pub struct Rule {
-	pub name: StrBuf,
+	pub name: String,
 	pub expr: Box<Expr>,
-	pub ret_type: StrBuf,
+	pub ret_type: String,
 	pub exported: bool,
 }
 
@@ -19,15 +19,15 @@ pub struct CharSetCase {
 }
 
 pub struct TaggedExpr {
-	pub name: Option<StrBuf>,
-	pub expr: Box<Expr>
+    pub name: Option<String>,
+    pub expr: Box<Expr>
 }
 
 pub enum Expr {
 	AnyCharExpr,
-	LiteralExpr(StrBuf),
+	LiteralExpr(String),
 	CharSetExpr(bool, Vec<CharSetCase>),
-	RuleExpr(StrBuf),
+	RuleExpr(String),
 	SequenceExpr(Vec<Expr>),
 	ChoiceExpr(Vec<Expr>),
 	OptionalExpr(Box<Expr>),
@@ -37,8 +37,20 @@ pub enum Expr {
 	PosAssertExpr(Box<Expr>),
 	NegAssertExpr(Box<Expr>),
 	StringifyExpr(Box<Expr>),
-	ActionExpr(Vec<TaggedExpr>, StrBuf),
+	ActionExpr(Vec<TaggedExpr>, String),
 }
+
+macro_rules! combine_str (
+    ($e:expr, $($es:expr),+) => (
+        ({
+            let mut x = $e.to_string();
+
+           $(x.push_str($es);)*
+            x
+        }).as_slice()
+        )
+        )
+
 
 pub fn compile_grammar(w: &RustWriter, grammar: &Grammar) {
 	compile_header(w, grammar.initializer.as_ref().map_or("", |s| s.as_slice()));
@@ -92,8 +104,9 @@ fn pos_to_line(input: &str, pos: uint) -> uint {
 
 
 fn compile_rule(w: &RustWriter, rule: &Rule) {
-	w.line("#[allow(unused_variable)]");
-	w.def_fn(false, "parse_"+rule.name.as_slice(), "input: &str, pos: uint", "Result<(uint, " + rule.ret_type.as_slice() + ") , uint>", || {
+    w.line("#[allow(unused_variable)]");
+
+    w.def_fn(false, combine_str!("parse_", rule.name.as_slice()), "input: &str, pos: uint", combine_str!("Result<(uint, ", rule.ret_type.as_slice(),  ") , uint>"), || {
 		compile_expr(w, rule.expr, rule.ret_type.as_slice() != "()");
 	});
 
@@ -103,29 +116,29 @@ fn compile_rule(w: &RustWriter, rule: &Rule) {
 }
 
 fn compile_rule_export(w: &RustWriter, rule: &Rule) {
-	w.def_fn(true, rule.name.as_slice(), "input: &str", "Result<"+rule.ret_type.as_slice()+", StrBuf>", || {
-		w.match_block("parse_"+rule.name.as_slice()+"(input, 0)", || {
-			w.match_case("Ok((pos, value))", || {
-				w.if_else("pos == input.len()",
-					|| { w.line("Ok(value)"); },
-					|| { w.line("Err((\"Expected end of input at \" + pos_to_line(input, pos).to_str()).to_strbuf())"); }
-				)
-			});
-			w.match_inline_case("Err(pos)", "Err((\"Error at \"+ pos_to_line(input, pos).to_str()).to_strbuf())");
-		});
+    w.def_fn(true, rule.name.as_slice(), "input: &str", combine_str!( "Result<", rule.ret_type.as_slice(), ", String>"), || {
+	w.match_block(combine_str!("parse_", rule.name.as_slice(), "(input, 0)"), || {
+	    w.match_case("Ok((pos, value))", || {
+		w.if_else("pos == input.len()",
+			  || { w.line("Ok(value)"); },
+			  || { w.line("Err(format!(\"Expected end of input at {}\", pos_to_line(input, pos)))"); }
+			  )
+	    });
+	    w.match_inline_case("Err(pos)", "Err(format!(\"Error at {}\", pos_to_line(input, pos)))");
 	});
+    });
 }
 
 fn compile_match_and_then(w: &RustWriter, e: &Expr, value_name: Option<&str>, then: ||) {
-	w.let_block("seq_res", || {
-		compile_expr(w, e, value_name.is_some());
+    w.let_block("seq_res", || {
+	compile_expr(w, e, value_name.is_some());
+    });
+    w.match_block("seq_res", || {
+	w.match_inline_case("Err(pos)", "Err(pos)");
+	w.match_case(combine_str!("Ok((pos, ", value_name.unwrap_or("_"), "))"), || {
+	    then();
 	});
-	w.match_block("seq_res", || {
-		w.match_inline_case("Err(pos)", "Err(pos)");
-		w.match_case("Ok((pos, "+value_name.unwrap_or("_")+"))", || {
-			then();
-		});
-	});
+    });
 }
 
 fn compile_zero_or_more(w: &RustWriter, e: &Expr, list_initial: Option<&str>) {
@@ -179,7 +192,7 @@ fn compile_expr(w: &RustWriter, e: &Expr, result_used: bool) {
 		}
 
 		LiteralExpr(ref s) => {
-			w.line("slice_eq(input, pos, \""+s.escape_default()+"\")");
+			w.line(combine_str!("slice_eq(input, pos, \"", s.escape_default().as_slice(), "\")").as_slice());
 			/*w.if_else("slice_eq(input, pos, \""+*s+"\")",
 				||{ w.line("Ok(pos+" + s.len().to_str() + ")"); },
 				||{ w.line("Err(pos)"); }
@@ -195,14 +208,14 @@ fn compile_expr(w: &RustWriter, e: &Expr, result_used: bool) {
 						for (i, case) in cases.iter().enumerate() {
 							if i != 0 { w.write(" | "); }
 							if case.start == case.end {
-								w.write("'"+str::from_char(case.start).escape_default()+"'");
+								w.write(combine_str!("'", str::from_char(case.start).escape_default().as_slice(), "'"));
 							} else {
 								let start = str::from_char(case.start).escape_default();
 								let end = str::from_char(case.end).escape_default();
-								w.write("'"+start+"'..'"+end+"'");
+								w.write(combine_str!("'", start.as_slice(), "'..'", end.as_slice(), "'"));
 							}
 						}
-						w.write(" => { "+ if !invert {"Ok((next, ()))"} else {"Err(pos)"} +" }\n");
+						w.write(combine_str!(" => { ", if !invert {"Ok((next, ()))"} else {"Err(pos)"}, " }\n"));
 						w.match_inline_case("_", if !invert {"Err(pos)"} else {"Ok((next, ()))"});
 					});
 				},
@@ -211,7 +224,7 @@ fn compile_expr(w: &RustWriter, e: &Expr, result_used: bool) {
 		}
 
 		RuleExpr(ref ruleName) => {
-			w.line("parse_"+ruleName.as_slice()+"(input, pos)");
+			w.line(combine_str!("parse_", ruleName.as_slice(), "(input, pos)"));
 		}
 
 		SequenceExpr(ref exprs) => {

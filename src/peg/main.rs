@@ -1,5 +1,6 @@
 #![feature(globs)]
 #![feature(managed_boxes)]
+#![feature(macro_rules)]
 
 extern crate core;
 
