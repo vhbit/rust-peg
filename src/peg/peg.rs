@@ -222,7 +222,7 @@ fn compile_expr(ctxt: &rustast::ExtCtxt, e: &Expr, result_used: bool) -> rustast
 				Err(pos)
 			})
 		}
-		
+
 		RuleExpr(ref ruleName) => {
 			let func = rustast::str_to_ident(format!("parse_{}", *ruleName).as_slice());
 			quote_expr!(ctxt, $func(input, pos))
@@ -276,7 +276,7 @@ fn compile_expr(ctxt: &rustast::ExtCtxt, e: &Expr, result_used: bool) -> rustast
 				Err(..) => Ok((pos, None)),
 			})
 		}
-		
+
 		ZeroOrMore(ref e) => {
 			compile_zero_or_more(ctxt, *e, if result_used { Some(quote_expr!(ctxt, vec!())) } else { None })
 		}
@@ -286,7 +286,7 @@ fn compile_expr(ctxt: &rustast::ExtCtxt, e: &Expr, result_used: bool) -> rustast
 				compile_zero_or_more(ctxt, *e, if result_used { Some(quote_expr!(ctxt, vec!(first_value))) } else { None })
 			)
 		}
-		
+
 		DelimitedExpr(_, _) => fail!("not implemented"),
 		StringifyExpr(..) => fail!("not implemented"),
 
@@ -340,4 +340,3 @@ fn compile_expr(ctxt: &rustast::ExtCtxt, e: &Expr, result_used: bool) -> rustast
 		}
 	}
 }
-
